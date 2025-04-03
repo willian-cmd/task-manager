@@ -1,29 +1,217 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Task Manager - Willian</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Manager</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
-        button { cursor: pointer; margin: 5px; }
-        #login-form, #task-section { margin-bottom: 20px; }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      h1 {
+        color: #2c3e50;
+        text-align: center;
+      }
+      #taskForm {
+        display: flex;
+        margin-bottom: 20px;
+      }
+      #taskInput {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+        border: 2px solid #ddd;
+        border-radius: 4px 0 0 4px;
+      }
+      #taskForm button {
+        padding: 10px 15px;
+        background-color: #2ecc71;
+        color: white;
+        border: none;
+        border-radius: 0 4px 4px 0;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      #taskForm button:hover {
+        background-color: #27ae60;
+      }
+      #taskList {
+        list-style: none;
+        padding: 0;
+      }
+      #taskList li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        margin-bottom: 8px;
+        background-color: white;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      #taskList li.completed {
+        opacity: 0.7;
+      }
+      #taskList li.completed span {
+        text-decoration: line-through;
+        color: #95a5a6;
+      }
+      #taskList span {
+        flex: 1;
+        cursor: pointer;
+        margin-right: 10px;
+      }
+      #taskList button {
+        background: none;
+        border: none;
+        color: #e74c3c;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      .task-count {
+        text-align: center;
+        color: #7f8c8d;
+        margin-bottom: 20px;
+      }
     </style>
-</head>
-<body>
-    <div id="login-form">
-        <h2>Iniciar Sesión</h2>
-        <input type="text" id="username" placeholder="Usuario">
-        <input type="password" id="password" placeholder="Contraseña">
-        <button onclick="login()">Ingresar</button>
-    </div>
+  </head>
+  <body>
+    <h1>Task Manager</h1>
+    <div class="task-count" id="taskCounter">0 tareas</div>
+    <form id="taskForm">
+      <input
+        type="text"
+        id="taskInput"
+        placeholder="Nueva tarea..."
+        autocomplete="off"
+      />
+      <button type="submit">Agregar</button>
+    </form>
+    <ul id="taskList"></ul>
 
-    <div id="task-section">
-        <h1>Mis Tareas</h1>
-        <ul id="tasks"></ul>
-        <input type="text" id="newTask" placeholder="Nueva tarea...">
-        <button onclick="addTask()">➕ Agregar</button>
-    </div>
+    <script>
+      // Obtener tareas del localStorage o inicializar array vacío
+      let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
 
-    <script src="app.js"></script>
-</body>
+      // Elementos del DOM
+      const taskForm = document.getElementById("taskForm");
+      const taskInput = document.getElementById("taskInput");
+      const taskList = document.getElementById("taskList");
+      const taskCounter = document.getElementById("taskCounter");
+
+      // Función para guardar tareas en localStorage
+      function saveTasks() {
+        localStorage.setItem("tasks", JSON.stringify(tasks));
+        updateTaskCounter();
+      }
+
+      // Función para actualizar el contador de tareas
+      function updateTaskCounter() {
+        const totalTasks = tasks.length;
+        const completedTasks = tasks.filter((task) => task.completed).length;
+        taskCounter.textContent = `${completedTasks} de ${totalTasks} tareas completadas`;
+      }
+
+      // Crear nueva tarea
+      function addTask(e) {
+        e.preventDefault();
+        const text = taskInput.value.trim();
+
+        if (!text) {
+          alert("¡La tarea no puede estar vacía!");
+          return;
+        }
+
+        const newTask = {
+          id: Date.now(),
+          text: text,
+          completed: false,
+          createdAt: new Date().toISOString(),
+        };
+
+        tasks.push(newTask);
+        taskInput.value = "";
+        saveTasks();
+        renderTasks();
+      }
+
+      // Alternar estado de completado
+      function toggleTask(id) {
+        tasks = tasks.map((task) =>
+          task.id === id ? { ...task, completed: !task.completed } : task
+        );
+        saveTasks();
+        renderTasks();
+      }
+
+      // Eliminar tarea
+      function deleteTask(id) {
+        if (!confirm("¿Estás seguro de eliminar esta tarea?")) return;
+
+        tasks = tasks.filter((task) => task.id !== id);
+        saveTasks();
+        renderTasks();
+      }
+
+      // Editar tarea
+      function editTask(id, newText) {
+        if (!newText.trim()) return;
+
+        tasks = tasks.map((task) =>
+          task.id === id ? { ...task, text: newText.trim() } : task
+        );
+        saveTasks();
+        renderTasks();
+      }
+
+      // Renderizar tareas
+      function renderTasks() {
+        // Ordenar tareas: no completadas primero, luego por fecha de creación
+        tasks.sort((a, b) => {
+          if (a.completed === b.completed) {
+            return new Date(a.createdAt) - new Date(b.createdAt);
+          }
+          return a.completed ? 1 : -1;
+        });
+
+        taskList.innerHTML = tasks
+          .map(
+            (task) => `
+                <li class="${task.completed ? "completed" : ""}">
+                    <span onclick="toggleTask(${task.id})">${task.text}</span>
+                    <div>
+                        <button onclick="promptEdit(${
+                          task.id
+                        }, '${task.text.replace(/'/g, "\\'")}')">✏️</button>
+                        <button onclick="deleteTask(${task.id})">🗑️</button>
+                    </div>
+                </li>
+            `
+          )
+          .join("");
+
+        updateTaskCounter();
+      }
+
+      // Función para editar con prompt
+      function promptEdit(id, currentText) {
+        const newText = prompt("Editar tarea:", currentText);
+        if (newText !== null) {
+          editTask(id, newText);
+        }
+      }
+
+      // Event Listeners
+      taskForm.addEventListener("submit", addTask);
+
+      // Inicialización
+      document.addEventListener("DOMContentLoaded", () => {
+        renderTasks();
+      });
+    </script>
+  </body>
 </html>
